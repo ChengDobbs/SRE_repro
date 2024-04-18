@@ -63,7 +63,7 @@ ipcn=10
 python 'recover/recover_in1k_awp.py' \
     --wandb-project $folder_path \
     --wandb-group syn_2k3k \
-    --wandb-job-type recover \
+    --wandb-job-type recover_awp \
     --wandb-name in1k_rn18_${iter}_ipc${ipcn} \
     --exp-name in1k_rn18_${iter}_ipc${ipcn} \
     --batch-size 100 \
