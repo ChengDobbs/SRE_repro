@@ -1,7 +1,8 @@
-iter="2k"
-ipcn=10
+CUDA_VISIBLE_DEVICES=0,1
+folder_path="SRE2L3.0" 
 
-
+# iter="2k"
+# ipcn=10
 # python 'recover/recover_cifar100_awp_multisteps' \
 #     --wandb-project $folder_path \
 #     --wandb-name SRE2L_syn_cifar100_${device} \
@@ -20,10 +21,10 @@ ipcn=10
 #     --ipc-end 50
 
 iter="2k"
-ipcn=20
+ipcn=10
 python 'recover/recover_in1k_awp.py' \
     --wandb-project $folder_path \
-    --wandb-group syn_2k3k \
+    --wandb-group syn_2k3k_awp \
     --wandb-job-type recover_awp \
     --wandb-name in1k_rn18_awp_${iter}_ipc${ipcn} \
     --exp-name in1k_rn18_awp_${iter}_ipc${ipcn} \

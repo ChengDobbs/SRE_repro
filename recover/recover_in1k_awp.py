@@ -11,14 +11,14 @@ import torch.optim as optim
 import torch.utils
 import torch.utils.data.distributed
 import torchvision.models as models
-from torchvision import transforms
-
+import torchvision.transforms as transforms
+from PIL import Image
 from utils import save_images, validate
 from utils import ImageProcessor
 from utils import BNFeatureHook
-from utils import SAM
 from utils import lr_cosine_policy
 from utils import wandb_init
+from utils import SAM
 
 wandb_metrics = {}
 
@@ -31,6 +31,10 @@ def parse_args():
                         help='name of the experiment, subfolder under syn_data_path')
     parser.add_argument('--dataset', type=str, default='imagenet', 
                         help='type of dataset', choices=['cifar100', 'imagenet', 'tinyIN'])
+    parser.add_argument('--select-num', type=int, default=50,
+                        help='number of images selected for each class')
+    parser.add_argument('--data-select-path', type=str, default='/raid/data_dujw/imagenet/select/select_dataset',
+                        help='path to selected images')
     parser.add_argument('--syn-data-path', type=str, default='./syn_data', 
                         help='where to store synthetic data')
     parser.add_argument('--store-best-images', action='store_true',
@@ -77,8 +81,21 @@ def parse_args():
     
     args = parser.parse_args()
     args.syn_data_path = os.path.join(args.syn_data_path, args.exp_name)
+    args.data_select_path = os.path.join(args.data_select_path + '_' + str(args.select_num))
 
     return args
+
+def load_image(image_path):
+    image = Image.open(image_path)
+    image = image.convert('RGB')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        normalize,
+    ])
+    return preprocess(image)
 
 def get_images(args, model_teacher, ipc_id):
     global wandb_metrics
@@ -96,13 +113,24 @@ def get_images(args, model_teacher, ipc_id):
     # targets_all = torch.LongTensor(np.random.permutation(1000))
     targets_all = torch.LongTensor(np.arange(1000))
 
+    targets_all = torch.LongTensor(np.arange(1000))
+
     for kk in range(0, 1000, batch_size):
         
-        save_every = args.batch_size
-        targets = targets_all[kk : min(kk + batch_size, 1000)].to('cuda')
+        start_index = kk
+        end_index = min(kk + batch_size, 1000)
+        targets = targets_all[start_index:end_index].to('cuda')
+        
+        inputs = []
+        for folder_index in range(start_index, end_index):
+            folder_path = os.path.join(args.data_select_path, os.listdir(args.data_select_path)[folder_index])
+            image_path = os.path.join(folder_path, os.listdir(folder_path)[ipc_id])  
+            
+            image = load_image(image_path)  
+            inputs.append(image)
 
-        data_type = torch.float
-        inputs = torch.randn((targets.shape[0], 3, 224, 224), requires_grad=True, device='cuda', dtype=data_type)
+        # TODO: check if substitute variable works
+        inputs = torch.stack(inputs).to('cuda')  
 
         iterations_per_layer = args.iteration
         lim_0, lim_1 = args.jitter , args.jitter
@@ -138,7 +166,7 @@ def get_images(args, model_teacher, ipc_id):
                     outputs = model_teacher(inputs_jit)
                     loss_ce = criterion(outputs, targets)
                     loss_ce.backward()
-                    sam_optimizer.first_step(False)
+                    sam_optimizer.first_step(True)
             outputs = model_teacher(inputs_jit)
 
             # R_cross classification loss
@@ -171,6 +199,7 @@ def get_images(args, model_teacher, ipc_id):
             wandb_metrics.update(metrics)
             wandb.log(wandb_metrics)
 
+            save_every = args.batch_size
             if iteration % save_every==0:
                 print("------------iteration {}----------".format(iteration))
                 print("total loss", loss.item())
@@ -212,14 +241,14 @@ def main_syn(args, ipc_id):
     if not os.path.exists(args.syn_data_path):
         os.makedirs(args.syn_data_path)
 
-    model_teacher = models.__dict__[args.arch_name] \
-                    (weights = models.resnet.ResNet18_Weights.DEFAULT)
+    # avoid higher version torchvision warning
+    # model_teacher = models.__dict__[args.arch_name] \
+    #                 (weights = models.resnet.ResNet18_Weights.DEFAULT)
+    model_teacher = models.__dict__[args.arch_name](pretrained = True)
     # multi-GPUs prerequisite, pesudo parallelism
     model_teacher = nn.DataParallel(model_teacher).cuda()
     # model_teacher = model_teacher.cuda()
     model_teacher.eval()
-
-    # sam needs requires_grad = True
     # for p in model_teacher.parameters():
     #     p.requires_grad = False
 

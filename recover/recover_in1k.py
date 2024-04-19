@@ -13,6 +13,7 @@ import torch.utils.data.distributed
 import torchvision.models as models
 from torchvision import transforms
 
+from PIL import Image
 from utils import save_images, validate
 from utils import ImageProcessor
 from utils import BNFeatureHook
@@ -93,8 +94,9 @@ def get_images(args, model_teacher, ipc_id):
 
     for kk in range(0, 1000, batch_size):
         
-        save_every = args.batch_size
-        targets = targets_all[kk : min(kk + batch_size, 1000)].to('cuda')
+        start_index = kk
+        end_index = min(kk + batch_size, 1000)
+        targets = targets_all[start_index : end_index].to('cuda')
 
         data_type = torch.float
         inputs = torch.randn((targets.shape[0], 3, 224, 224), requires_grad=True, device='cuda', dtype=data_type)
@@ -156,6 +158,7 @@ def get_images(args, model_teacher, ipc_id):
             wandb_metrics.update(metrics)
             wandb.log(wandb_metrics)
 
+            save_every = args.batch_size
             if iteration % save_every==0:
                 print("------------iteration {}----------".format(iteration))
                 print("total loss", loss.item())

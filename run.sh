@@ -43,27 +43,11 @@ ipcn=10
 #     --ipc-start 0 \
 #     --ipc-end 50
 
-# iter="2k"
-# python 'recover/recover_in1k.py' \
-#     --wandb-project $folder_path \
-#     --wandb-group syn_2k3k \
-#     --wandb-job-type recover \
-#     --wandb-name in1k_rn18_${iter}_ipc${ipcn} \
-#     --exp-name in1k_rn18_${iter}_ipc${ipcn} \
-#     --batch-size 100 \
-#     --lr 0.25 \
-#     --iteration 2000 \
-#     --r-bn 0.01 \
-#     --store-best-images \
-#     --ipc-start 0 \
-#     --ipc-end ${ipcn}
-
 iter="2k"
-ipcn=10
-python 'recover/recover_in1k_awp.py' \
+python 'recover/recover_in1k.py' \
     --wandb-project $folder_path \
     --wandb-group syn_2k3k \
-    --wandb-job-type recover_awp \
+    --wandb-job-type recover \
     --wandb-name in1k_rn18_${iter}_ipc${ipcn} \
     --exp-name in1k_rn18_${iter}_ipc${ipcn} \
     --batch-size 100 \
@@ -73,6 +57,22 @@ python 'recover/recover_in1k_awp.py' \
     --store-best-images \
     --ipc-start 0 \
     --ipc-end ${ipcn}
+
+# iter="2k"
+# ipcn=10
+# python 'recover/recover_in1k_awp.py' \
+#     --wandb-project $folder_path \
+#     --wandb-group syn_2k3k \
+#     --wandb-job-type recover_awp \
+#     --wandb-name in1k_rn18_${iter}_ipc${ipcn} \
+#     --exp-name in1k_rn18_${iter}_ipc${ipcn} \
+#     --batch-size 100 \
+#     --lr 0.25 \
+#     --iteration 2000 \
+#     --r-bn 0.01 \
+#     --store-best-images \
+#     --ipc-start 0 \
+#     --ipc-end ${ipcn}
 
 # python 'relabel/relabel_cifar100.py' \
 #     --epochs 800 \
