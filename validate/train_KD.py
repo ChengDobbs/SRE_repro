@@ -70,7 +70,7 @@ def get_args():
     parser.add_argument('--wandb-group', type=str, default="syn_it2k",  
                         help='group name')
     parser.add_argument('--wandb-job-type', type=str, default="val_KD", 
-                        choices=['recover', 'relabel', 'val_KD', 'val_FKD'],
+                        choices=['recover', 'relabel', 'val_KD', 'valKD_awp', 'val_FKD'],
                         help="job type in certain group")
     
     """mix augmentation flags"""
