@@ -113,8 +113,6 @@ def get_images(args, model_teacher, ipc_id):
     # targets_all = torch.LongTensor(np.random.permutation(1000))
     targets_all = torch.LongTensor(np.arange(1000))
 
-    targets_all = torch.LongTensor(np.arange(1000))
-
     for kk in range(0, 1000, batch_size):
         
         start_index = kk
@@ -124,13 +122,12 @@ def get_images(args, model_teacher, ipc_id):
         inputs = []
         for folder_index in range(start_index, end_index):
             folder_path = os.path.join(args.data_select_path, os.listdir(args.data_select_path)[folder_index])
-            image_path = os.path.join(folder_path, os.listdir(folder_path)[ipc_id])  
-            
-            image = load_image(image_path)  
+            image_path = os.path.join(folder_path, os.listdir(folder_path)[ipc_id])
+            image = load_image(image_path)
             inputs.append(image)
 
         # TODO: check if substitute variable works
-        inputs = torch.stack(inputs).to('cuda')  
+        inputs = torch.stack(inputs).to('cuda')
 
         iterations_per_layer = args.iteration
         lim_0, lim_1 = args.jitter , args.jitter
@@ -244,7 +241,7 @@ def main_syn(args, ipc_id):
     # avoid higher version torchvision warning
     # model_teacher = models.__dict__[args.arch_name] \
     #                 (weights = models.resnet.ResNet18_Weights.DEFAULT)
-    model_teacher = models.__dict__[args.arch_name](pretrained = True)
+    model_teacher = models.__dict__[args.arch_name](pretrained=True)
     # multi-GPUs prerequisite, pesudo parallelism
     model_teacher = nn.DataParallel(model_teacher).cuda()
     # model_teacher = model_teacher.cuda()

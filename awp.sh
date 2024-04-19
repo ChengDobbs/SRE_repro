@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=0,1
-folder_path="SRE2L3.0" 
+
+
 
 # iter="2k"
 # ipcn=10
@@ -22,6 +22,8 @@ folder_path="SRE2L3.0"
 
 iter="2k"
 ipcn=10
+folder_path="SRE2L3.0" 
+CUDA_VISIBLE_DEVICES=6 \
 python 'recover/recover_in1k_awp.py' \
     --wandb-project $folder_path \
     --wandb-group syn_2k3k_awp \
