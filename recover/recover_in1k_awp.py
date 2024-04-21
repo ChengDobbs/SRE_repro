@@ -82,7 +82,8 @@ def parse_args():
     args = parser.parse_args()
     args.syn_data_path = os.path.join(args.syn_data_path, args.exp_name)
     args.data_select_path = os.path.join(args.data_select_path + '_' + str(args.select_num))
-
+    # class-wise alignment
+    args.sorted_path = sorted(os.listdir(args.data_select_path))
     return args
 
 def load_image(image_path):
@@ -121,7 +122,8 @@ def get_images(args, model_teacher, ipc_id):
         
         inputs = []
         for folder_index in range(start_index, end_index):
-            folder_path = os.path.join(args.data_select_path, os.listdir(args.data_select_path)[folder_index])
+            # folder_path = os.path.join(args.data_select_path, os.listdir(args.data_select_path)[folder_index])
+            folder_path = os.path.join(args.data_select_path, args.sorted_path[folder_index])
             image_path = os.path.join(folder_path, os.listdir(folder_path)[ipc_id])
             image = load_image(image_path)
             inputs.append(image)
