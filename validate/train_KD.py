@@ -59,7 +59,9 @@ def get_args():
                         help='student model name')
     parser.add_argument('--teacher-model', type=str, default='resnet18',
                         help='teacher model name')
-
+    parser.add_argument('--weights', type=str, default='ResNet18_Weights.DEFAULT', 
+                        help='path to pretrained weights')
+    
     """wandb flags"""
     parser.add_argument('--wandb-project', type=str, default='Temperature', 
                         help='wandb project name')
@@ -112,7 +114,6 @@ def main():
         transforms.ToTensor(),
         normalize])
 
-
     train_dataset = datasets.ImageFolder(
         args.train_dir,
         transform=train_transforms
@@ -138,11 +139,10 @@ def main():
         ])),
         batch_size=int(args.batch_size/4), shuffle=False,
         num_workers=args.workers, pin_memory=True)
-    print('load data successfully')
 
     # load student model
     print("=> loading student model '{}'".format(args.model))
-    model = models.__dict__[args.model](weights=None)
+    model = models.__dict__[args.model](weights = None)
     model = nn.DataParallel(model).cuda()
     model.train()
 
@@ -150,18 +150,14 @@ def main():
     print("=> loading teacher model '{}'".format(args.teacher_model))
 
     # cross-model validation
-    if args.teacher_model == 'resnet18':
-        teacher_model = models.__dict__[args.teacher_model] \
-                        (weights = models.resnet.ResNet18_Weights.DEFAULT)
-    elif args.teacher_model == 'resnet50':
-        teacher_model = models.__dict__[args.teacher_model] \
-                        (weights = models.resnet.ResNet50_Weights.DEFAULT)
-    elif args.teacher_model == 'resnet101':
-        teacher_model = models.__dict__[args.teacher_model] \
-                        (weights = models.resnet.ResNet101_Weights.DEFAULT)
+    if args.weights is not None:
+        print(f"load teacher model weights from {args.weights}")
+        weights = args.weights.split('.')
+        teacher_model = models.__dict__[args.teacher_model](weights = weights)
     else:
         raise ValueError(f"teacher model {args.teacher_model} not supported")
     
+    # teacher_model = models.__dict__[args.teacher_model](pretrained=True)
     teacher_model = nn.DataParallel(teacher_model).cuda()
     teacher_model.eval()
     for param in teacher_model.parameters():
