@@ -9,7 +9,7 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
-parser = argparse.ArgumentParser(description="PyTorch CIFAR10 Training")
+parser = argparse.ArgumentParser(description="PyTorch CIFAR100 Self-Training")
 parser.add_argument("--lr", default=0.1, type=float, help="learning rate")
 parser.add_argument("--resume", "-r", action="store_true", help="resume from checkpoint")
 parser.add_argument("--output-dir", default="./save", type=str)
@@ -58,7 +58,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False,
 # Model
 print("==> Building model..")
 
-model = torchvision.models.get_model("resnet34", num_classes=100)
+model = torchvision.models.resnet18(num_classes=100)
 model.conv1 = nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
 model.maxpool = nn.Identity()
 
