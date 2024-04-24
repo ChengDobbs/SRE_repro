@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.utils
 import torch.utils.data.distributed
 import torchvision.models as models
-from torchvision import transforms
+import torchvision.transforms as transforms
 
 from utils import save_images, validate
 from utils import ImageProcessor
@@ -29,6 +29,7 @@ def parse_args():
                         default='./syn_data', help='where to store synthetic data')
     parser.add_argument('--store-last-images', action='store_true',
                         help='whether to store best images')
+    
     ''' Optimization flags '''
     parser.add_argument('--batch-size', type=int,
                         default=100, help='number of images to optimize at the same time')
@@ -41,6 +42,7 @@ def parse_args():
                         help='coefficient for BN feature distribution regularization')
     parser.add_argument('--first-bn-multiplier', type=float, default=10.,
                         help='additional multiplier on first bn layer of R_bn')
+    
     ''' Model flags '''
     parser.add_argument('--arch-name', type=str, default='resnet18',
                         help='arch name from pretrained torchvision models')
@@ -50,6 +52,7 @@ def parse_args():
                         help="arch name from torchvision models to act as a verifier")
     parser.add_argument('--arch-path', type=str, default='')
     parser.add_argument('--verifier-arch-path', type=str, default='')
+    
     ''' Training Helpers '''
     parser.add_argument('--ipc-start', default=0, type=int)
     parser.add_argument('--ipc-end', default=50, type=int)
@@ -208,5 +211,5 @@ if __name__ == '__main__':
     for ipc_id in range(args.ipc_start, args.ipc_end):
         print(f'ipc = {ipc_id}')
         main_syn(ipc_id, args)
-        
+
     wandb.finish()
