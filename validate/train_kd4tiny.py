@@ -20,15 +20,16 @@ from utils import RASampler
 from utils import RandomCutmix, RandomMixup
 from utils import RASampler
 from utils import TinyImageNet
+import utils_tiny
 from imagenet_ipc import ImageFolderIPC
 
 
 def train_one_epoch(model, teacher_model, criterion, optimizer, data_loader, device, epoch, args, model_ema=None, scaler=None):
     model.train()
     teacher_model.eval()
-    metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter("lr", utils.SmoothedValue(window_size=1, fmt="{value}"))
-    metric_logger.add_meter("img/s", utils.SmoothedValue(window_size=10, fmt="{value}"))
+    metric_logger = utils_tiny.MetricLogger(delimiter="  ")
+    metric_logger.add_meter("lr", utils_tiny.SmoothedValue(window_size=1, fmt="{value}"))
+    metric_logger.add_meter("img/s", utils_tiny.SmoothedValue(window_size=10, fmt="{value}"))
 
     header = f"Epoch: [{epoch}]"
     for i, (image, target) in enumerate(metric_logger.log_every(data_loader, args.print_freq, header)):
@@ -62,7 +63,7 @@ def train_one_epoch(model, teacher_model, criterion, optimizer, data_loader, dev
                 # Reset ema buffer to keep copying weights during warmup period
                 model_ema.n_averaged.fill_(0)
 
-        acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+        acc1, acc5 = utils_tiny.accuracy(output, target, topk=(1, 5))
         batch_size = image.shape[0]
         metric_logger.update(loss=loss.item(), lr=optimizer.param_groups[0]["lr"])
         metric_logger.meters["acc1"].update(acc1.item(), n=batch_size)
@@ -75,7 +76,7 @@ def train_one_epoch(model, teacher_model, criterion, optimizer, data_loader, dev
 
 def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix=""):
     model.eval()
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils_tiny.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
 
     num_processed_samples = 0
@@ -86,7 +87,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix="
             output = model(image)
             loss = criterion(output, target)
 
-            acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = utils_tiny.accuracy(output, target, topk=(1, 5))
             # FIXME need to take into account that the datasets
             # could have been padded in distributed setup
             batch_size = image.shape[0]
@@ -96,7 +97,7 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix="
             num_processed_samples += batch_size
     # gather the stats from all processes
 
-    num_processed_samples = utils.reduce_across_processes(num_processed_samples)
+    num_processed_samples = utils_tiny.reduce_across_processes(num_processed_samples)
     if (
         hasattr(data_loader.dataset, "__len__")
         and len(data_loader.dataset) != num_processed_samples
@@ -127,7 +128,11 @@ def load_data(traindir, valdir, args):
             normalize,
         ])
 
-    dataset = ImageFolderIPC(root=args.syn_data_path, ipc=args.image_per_class, transform=train_transform)
+    dataset = ImageFolderIPC(
+        args.syn_data_path, 
+        image_number = args.image_per_class, 
+        transform = train_transform
+    )
 
     print("Loading validation data")
     val_transform = transforms.Compose([
@@ -155,9 +160,9 @@ def main(args):
     global best_acc1
     best_acc1 = 0
     if args.output_dir:
-        utils.mkdir(args.output_dir)
+        utils_tiny.mkdir(args.output_dir)
 
-    utils.init_distributed_mode(args)
+    utils_tiny.init_distributed_mode(args)
     print(args)
 
     device = torch.device(args.device)
@@ -233,7 +238,7 @@ def main(args):
     if args.transformer_embedding_decay is not None:
         for key in ["class_token", "position_embedding", "relative_position_bias_table"]:
             custom_keys_weight_decay.append((key, args.transformer_embedding_decay))
-    parameters = utils.set_weight_decay(
+    parameters = utils_tiny.set_weight_decay(
         model,
         args.weight_decay,
         norm_weight_decay=args.norm_weight_decay,
@@ -310,7 +315,7 @@ def main(args):
         adjust = args.world_size * args.batch_size * args.model_ema_steps / args.epochs
         alpha = 1.0 - args.model_ema_decay
         alpha = min(1.0, alpha * adjust)
-        model_ema = utils.ExponentialMovingAverage(model_without_ddp, device=device, decay=1.0 - alpha)
+        model_ema = utils_tiny.ExponentialMovingAverage(model_without_ddp, device=device, decay=1.0 - alpha)
 
     if args.resume:
         checkpoint = torch.load(args.resume, map_location="cpu")
@@ -358,11 +363,11 @@ def main(args):
             if scaler:
                 checkpoint["scaler"] = scaler.state_dict()
             if args.save_all:
-                utils.save_on_master(checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth"))
-            utils.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint.pth"))
+                utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, f"model_{epoch}.pth"))
+            utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint.pth"))
             if acc1 > best_acc1:
                 best_acc1 = max(acc1, best_acc1)
-                utils.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
+                utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
     # wandb.log({'last_acc1': acc1})
     # wandb.log({"best_acc1": best_acc1})
     print(f"Best Accuracy {best_acc1:.3f}")
