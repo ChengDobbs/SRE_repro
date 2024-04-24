@@ -71,7 +71,12 @@ def train_one_epoch(model, teacher_model, criterion, optimizer, data_loader, dev
         metric_logger.meters["img/s"].update(batch_size / (time.time() - start_time))
         # del loss, output, teacher_output, image, target, acc1, acc5
         # torch.cuda.empty_cache()
-
+    metrics = {
+        'train/loss': metric_logger.loss.global_avg,
+        'train/top1': metric_logger.acc1.global_avg,
+        'train/top5': metric_logger.acc5.global_avg,
+    }
+    wandb.log(metrics)
     # print(f"{header} Acc@1 {metric_logger.acc1.global_avg:.3f} Acc@5 {metric_logger.acc5.global_avg:.3f}")
 
 def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix=""):
@@ -347,7 +352,6 @@ def main(args):
         train_one_epoch(model, teacher_model, criterion_kl, optimizer, data_loader, device, epoch, args, model_ema, scaler)
         lr_scheduler.step()
         acc1 = evaluate(model, criterion, data_loader_test, device=device)
-        # wandb.log({"test acc1": acc1})
         if model_ema:
             evaluate(model_ema, criterion, data_loader_test, device=device, log_suffix="EMA")
         if args.output_dir:
@@ -368,8 +372,12 @@ def main(args):
             if acc1 > best_acc1:
                 best_acc1 = max(acc1, best_acc1)
                 utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
-    # wandb.log({'last_acc1': acc1})
-    # wandb.log({"best_acc1": best_acc1})
+        mertrics = {
+            'val/top1': acc1,
+            'val/epoch': epoch,
+            'best_acc1': best_acc1,
+        }
+        wandb.log(mertrics)
     print(f"Best Accuracy {best_acc1:.3f}")
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -403,7 +411,7 @@ def get_args():
     parser.add_argument("--lr-gamma", default=0.1, type=float, help="decrease lr by a factor of lr-gamma")
     parser.add_argument("--lr-min", default=0.0, type=float, help="minimum lr of lr schedule (default: 0.0)")
     parser.add_argument("--print-freq", default=1000, type=int, help="print frequency")
-    parser.add_argument("--output-dir", default=".", type=str, help="path to save outputs")
+    parser.add_argument("--output-dir", default=None, type=str, help="path to save outputs")
     parser.add_argument("--save-all", action="store_true", help="save checkpoint for all epochs")
     parser.add_argument("--resume", default="", type=str, help="path of checkpoint")
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
