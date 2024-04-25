@@ -2,7 +2,7 @@ folder_path="SRE2L3.0"
 
 bs=256
 ep=50
-#python squeeze/squeeze_tiny.py \
+# python squeeze/squeeze_tiny.py \
 #    --wandb-project $folder_path \
 #    --wandb-group tiny \
 #    --wandb-job-type squeeze \
@@ -20,17 +20,18 @@ ep=50
 #    --lr-warmup-decay 0.01 \
 #    --output-dir save/tiny_rn18_ep${ep}
 
-
 ipcn=50
 iter=1k
-python recover/recover_tiny.py \
+python recover/recover_tiny_awp.py \
     --wandb-project $folder_path \
-    --wandb-group tiny \
+    --wandb-group tiny_awp \
     --wandb-job-type recover \
-    --wandb-name tiny_rn18_${iter}_ipc${ipcn} \
+    --wandb-name tiny_rn18_awp_${iter}_ipc${ipcn} \
     --arch-name resnet18 \
     --arch-path save/tiny_rn18_ep${ep}/checkpoint.pth \
-    --exp-name tiny_rn18_${iter}_ipc${ipcn} \
+    --exp-name tiny_rn18_awp_${iter}_ipc${ipcn} \
+    --data-select-path data/tiny-imagenet-200/select/select_dataset \
+    --select-num 50 \
     --batch-size 100 \
     --lr 0.1 \
     --r-bn 1 \
@@ -42,9 +43,9 @@ python recover/recover_tiny.py \
 
 python validate/train_kd4tiny.py \
     --wandb-project $folder_path \
-    --wandb-group tiny \
+    --wandb-group tiny_awp \
     --wandb-job-type val_KD \
-    --wandb-name tiny_rn18_${iter}_ipc${ipcn} \
+    --wandb-name tiny_rn18_awp_${iter}_ipc${ipcn} \
     --model resnet18 \
     --teacher-model resnet18 \
     --teacher-path save/tiny_rn18_ep${ep}/checkpoint.pth \
@@ -58,7 +59,7 @@ python validate/train_kd4tiny.py \
     --lr-warmup-epochs 5 \
     --lr-warmup-method linear \
     --lr-warmup-decay 0.01 \
-    --syn-data-path syn_data/tiny_rn18_${iter}_ipc${ipcn} \
+    --syn-data-path syn_data/tiny_rn18_awp_${iter}_ipc${ipcn} \
     -T 20 \
     --image-per-class $ipcn \
     --output-dir save/s18t18_t20_2k_ipc_$ipcn
