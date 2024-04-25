@@ -382,7 +382,7 @@ def main(args):
                 best_acc1 = max(acc1, best_acc1)
                 utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
         mertrics = {
-            'epoch': epoch,
+            'val/epoch': epoch,
             'best_acc1': best_acc1,
         }
         wandb.log(mertrics)
