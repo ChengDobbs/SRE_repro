@@ -75,11 +75,12 @@ def train_one_epoch(model, teacher_model, criterion, optimizer, data_loader, dev
         'train/loss': metric_logger.loss.global_avg,
         'train/top1': metric_logger.acc1.global_avg,
         'train/top5': metric_logger.acc5.global_avg,
+        'train/epoch': epoch,
     }
     wandb.log(metrics)
     # print(f"{header} Acc@1 {metric_logger.acc1.global_avg:.3f} Acc@5 {metric_logger.acc5.global_avg:.3f}")
 
-def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix=""):
+def evaluate(model, criterion, data_loader, device, epoch, print_freq=100, log_suffix=""):
     model.eval()
     metric_logger = utils_tiny.MetricLogger(delimiter="  ")
     header = f"Test: {log_suffix}"
@@ -101,6 +102,14 @@ def evaluate(model, criterion, data_loader, device, print_freq=100, log_suffix="
             metric_logger.meters["acc5"].update(acc5.item(), n=batch_size)
             num_processed_samples += batch_size
     # gather the stats from all processes
+
+    metrics = {
+        'val/loss': metric_logger.loss.global_avg,
+        'val/top1': metric_logger.acc1.global_avg,
+        'val/top5': metric_logger.acc5.global_avg,
+        'val/epoch': metric_logger.acc1.count,
+    }
+    wandb.log(metrics)
 
     num_processed_samples = utils_tiny.reduce_across_processes(num_processed_samples)
     if (
@@ -339,9 +348,9 @@ def main(args):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
         if model_ema:
-            evaluate(model_ema, criterion, data_loader_test, device=device, log_suffix="EMA")
+            evaluate(model_ema, criterion, data_loader_test, device=device, epoch=args.start_epoch, log_suffix="EMA")
         else:
-            evaluate(model, criterion, data_loader_test, device=device)
+            evaluate(model, criterion, data_loader_test, device=device, epoch=args.start_epoch)
         return
 
     print("Start training")
@@ -351,9 +360,9 @@ def main(args):
             train_sampler.set_epoch(epoch)
         train_one_epoch(model, teacher_model, criterion_kl, optimizer, data_loader, device, epoch, args, model_ema, scaler)
         lr_scheduler.step()
-        acc1 = evaluate(model, criterion, data_loader_test, device=device)
+        acc1 = evaluate(model, criterion, data_loader_test, device=device, epoch=epoch)
         if model_ema:
-            evaluate(model_ema, criterion, data_loader_test, device=device, log_suffix="EMA")
+            evaluate(model_ema, criterion, data_loader_test, device=device, epoch=epoch, log_suffix="EMA")
         if args.output_dir:
             checkpoint = {
                 "model": model_without_ddp.state_dict(),
@@ -373,8 +382,7 @@ def main(args):
                 best_acc1 = max(acc1, best_acc1)
                 utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
         mertrics = {
-            'val/top1': acc1,
-            'val/epoch': epoch,
+            'epoch': epoch,
             'best_acc1': best_acc1,
         }
         wandb.log(mertrics)
