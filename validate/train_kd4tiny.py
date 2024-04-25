@@ -107,7 +107,7 @@ def evaluate(model, criterion, data_loader, device, epoch, print_freq=100, log_s
         'val/loss': metric_logger.loss.global_avg,
         'val/top1': metric_logger.acc1.global_avg,
         'val/top5': metric_logger.acc5.global_avg,
-        'val/epoch': metric_logger.acc1.count,
+        'val/epoch': epoch,
     }
     wandb.log(metrics)
 
