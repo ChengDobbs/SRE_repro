@@ -128,15 +128,16 @@ def get_images(args, model_teacher, ipc_id):
             image = load_image(image_path)
             inputs.append(image)
 
-        # TODO: check if substitute variable works
         inputs = torch.stack(inputs).to('cuda')
 
         iterations_per_layer = args.iteration
         lim_0, lim_1 = args.jitter , args.jitter
 
         optimizer = optim.Adam([inputs], lr=args.lr, betas=[0.5, 0.9], eps = 1e-8)
-        paras = model_teacher.parameters()
-        sam_optimizer = SAM(paras, optimizer, rho = args.rho / args.sam_steps)
+
+        if args.sam_steps:
+            paras = model_teacher.parameters()
+            sam_optimizer = SAM(paras, optimizer, rho = args.rho / args.sam_steps)
         
         lr_scheduler = lr_cosine_policy(args.lr, 0, iterations_per_layer) # 0 - do not use warmup
         criterion = nn.CrossEntropyLoss()
@@ -245,13 +246,7 @@ def main_syn(args, ipc_id):
     model_teacher = models.__dict__[args.arch_name](pretrained=True)
     # multi-GPUs prerequisite, pesudo parallelism
     model_teacher = nn.DataParallel(model_teacher).cuda()
-    # model_teacher = model_teacher.cuda()
     model_teacher.eval()
-
-    if not args.sam_steps:
-        for p in model_teacher.parameters():
-            p.requires_grad = False
-
     get_images(args, model_teacher, ipc_id)
 
 
