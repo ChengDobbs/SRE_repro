@@ -236,7 +236,6 @@ def get_images(args, model_teacher, ipc_id):
 
 def main_syn(args, ipc_id):
 
-    wandb_init(args)
     if not os.path.exists(args.syn_data_path):
         os.makedirs(args.syn_data_path)
 
@@ -248,8 +247,10 @@ def main_syn(args, ipc_id):
     model_teacher = nn.DataParallel(model_teacher).cuda()
     # model_teacher = model_teacher.cuda()
     model_teacher.eval()
-    # for p in model_teacher.parameters():
-    #     p.requires_grad = False
+
+    if not args.sam_steps:
+        for p in model_teacher.parameters():
+            p.requires_grad = False
 
     get_images(args, model_teacher, ipc_id)
 
@@ -257,8 +258,6 @@ def main_syn(args, ipc_id):
 if __name__ == '__main__':
 
     args = parse_args()
-    args.milestone = 1
-
     wandb_init(args)
 
     for ipc_id in range(args.ipc_start, args.ipc_end):
