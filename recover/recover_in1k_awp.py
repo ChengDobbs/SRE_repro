@@ -53,9 +53,9 @@ def parse_args():
                         help='coefficient for BN feature distribution regularization')
     parser.add_argument('--first-bn-multiplier', type=float, default=10.,
                         help='additional multiplier on first bn layer of R_bn')
-    parser.add_argument('--rho', type=float, default=0.05,
+    parser.add_argument('--rho', type=float, default=0.015,
                         help='rho parameter for SAM optimizer')
-    parser.add_argument('--sam-steps', type=int, default=1,
+    parser.add_argument('--sam-steps', type=int, default=15,
                         help='number of SAM steps')
     
     '''model flags'''
@@ -129,6 +129,7 @@ def get_images(args, model_teacher, ipc_id):
             inputs.append(image)
 
         inputs = torch.stack(inputs).to('cuda')
+        inputs = inputs.requires_grad_(True)
 
         iterations_per_layer = args.iteration
         lim_0, lim_1 = args.jitter , args.jitter
@@ -246,6 +247,7 @@ def main_syn(args, ipc_id):
     model_teacher = models.__dict__[args.arch_name](pretrained=True)
     # multi-GPUs prerequisite, pesudo parallelism
     model_teacher = nn.DataParallel(model_teacher).cuda()
+
     model_teacher.eval()
     get_images(args, model_teacher, ipc_id)
 
