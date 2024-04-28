@@ -50,9 +50,9 @@ def parse_args():
                         help='coefficient for BN feature distribution regularization')
     parser.add_argument('--first-bn-multiplier', type=float, default=10.,
                         help='additional multiplier on first bn layer of R_bn')
-    parser.add_argument('--rho', type=float, default=0.05,
+    parser.add_argument('--rho', type=float, default=0.015,
                         help='rho parameter for SAM optimizer')
-    parser.add_argument('--sam-steps', type=int, default=1,
+    parser.add_argument('--sam-steps', type=int, default=15,
                         help='number of SAM steps')
     
     ''' Model flags '''
@@ -131,7 +131,7 @@ def get_images(args, model_teacher, hook_for_display, ipc_id):
 
         # TODO: check if substitute variable works
         inputs = torch.stack(inputs).to('cuda')
-
+        inputs.requires_grad = True
         iterations_per_layer = args.iteration
 
         lim_0, lim_1 = args.jitter , args.jitter
