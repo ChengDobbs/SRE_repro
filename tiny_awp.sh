@@ -21,7 +21,7 @@ ep=50
 #    --output-dir save/tiny_rn18_ep${ep}
 
 ipcn=50
-iter=1k
+iter=2k
 python recover/recover_tiny_awp.py \
     --wandb-project $folder_path \
     --wandb-group tiny_awp \
@@ -35,7 +35,7 @@ python recover/recover_tiny_awp.py \
     --batch-size 100 \
     --lr 0.1 \
     --r-bn 1 \
-    --iteration 1000 \
+    --iteration 2000 \
     --store-last-images \
     --ipc-start 0 \
     --ipc-end $ipcn
@@ -50,7 +50,7 @@ python validate/train_kd4tiny.py \
     --teacher-model resnet18 \
     --teacher-path save/tiny_rn18_ep${ep}/checkpoint.pth \
     --batch-size 64 \
-    --epochs 100 \
+    --epochs 200 \
     --opt sgd \
     --lr 0.2 \
     --momentum 0.9 \
