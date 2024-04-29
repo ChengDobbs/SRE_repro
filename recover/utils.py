@@ -35,10 +35,10 @@ class ImageProcessor:
             """
             normalize the input image
             """
-            for c in range(3):
-                image_tensor[:, c] = (image_tensor[:, c] - self.mean[c]) / self.std[c]
+        for c in range(3):
+            image_tensor[:, c] = (image_tensor[:, c] - self.mean[c]) / self.std[c]
 
-            return image_tensor
+        return image_tensor
 
     def denormalize(self, image_tensor):
         """

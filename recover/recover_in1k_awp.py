@@ -148,6 +148,10 @@ def get_images(args, model_teacher, ipc_id):
             paras = model_teacher.parameters()
             sam_optimizer = SAM(paras, optimizer, rho = args.rho / args.sam_steps)
         
+        if args.tanh_space:
+            inputs.data = img_process.tanh_space(inputs.data)
+            inputs.data = img_process.normalize(inputs.data)
+
         lr_scheduler = lr_cosine_policy(args.lr, 0, iterations_per_layer) # 0 - do not use warmup
         criterion = nn.CrossEntropyLoss()
         criterion = criterion.cuda()
@@ -160,10 +164,6 @@ def get_images(args, model_teacher, ipc_id):
                 transforms.RandomResizedCrop(224), # Crop Coord
                 transforms.RandomHorizontalFlip(), # Flip Status
             ])
-
-            if args.tanh_space:
-                inputs.data = img_process.tanh_space(inputs.data)
-                inputs.data = img_process.normalize(inputs.data)
 
             inputs_jit = aug_func(inputs)
             # apply random jitter offsets
