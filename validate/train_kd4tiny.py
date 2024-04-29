@@ -383,12 +383,12 @@ def main(args):
                 utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
     
     print(f"Best Accuracy {best_acc1:.3f}")
-    mertrics = {
+    metrics = {
         'val/epoch': epoch,
         'best_acc1': best_acc1,
     }
-    metrics.update(mertrics)
-    wandb.log(mertrics)
+    metrics.update(metrics)
+    wandb.log(metrics)
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f"Training time {total_time_str}")
