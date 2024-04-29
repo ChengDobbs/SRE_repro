@@ -25,7 +25,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         "recover data from pre-trained model")
     ''' Data save flags '''
-    parser.add_argument('--exp-name', type=str, default='test',
+    parser.add_argument('--exp-name', type=str, default='tiny_rn18_awp_2k_ipc10',
                         help='name of the experiment, subfolder under syn_data_path')
     parser.add_argument('--dataset', type=str, default='tinyIN', 
                         help='type of dataset', choices=['cifar100', 'imagenet', 'tinyIN'])
@@ -54,6 +54,8 @@ def parse_args():
                         help='rho parameter for SAM optimizer')
     parser.add_argument('--sam-steps', type=int, default=15,
                         help='number of SAM steps')
+    parser.add_argument('--tanh-space', action='store_true',
+                        help='whether to use tanh space for optimization')
     
     ''' Model flags '''
     parser.add_argument('--arch-name', type=str, default='resnet18',
@@ -70,7 +72,7 @@ def parse_args():
     parser.add_argument('--ipc-end', default=50, type=int)
 
     '''wandb flags'''
-    parser.add_argument('--wandb-project', type=str, default='SRe2L', 
+    parser.add_argument('--wandb-project', type=str, default='Ortho_SRe2L', 
                         help='wandb project name')
     parser.add_argument('--wandb-name', type=str, default='tiny', 
                         help='name')
@@ -129,15 +131,25 @@ def get_images(args, model_teacher, hook_for_display, ipc_id):
             image = load_image(image_path)
             inputs.append(image)
 
-        # TODO: check if substitute variable works
+        img_process = ImageProcessor(dataset)
         inputs = torch.stack(inputs).to('cuda')
+
+        if args.tanh_space:
+            inputs.data = img_process.denormalize(inputs.data)
+            inputs.data = img_process.inverse_tanh_space(inputs.data)
+
         inputs.requires_grad = True
         iterations_per_layer = args.iteration
-
         lim_0, lim_1 = args.jitter , args.jitter
         optimizer = optim.Adam([inputs], lr=args.lr, betas=[0.5, 0.9], eps = 1e-8)
-        paras = model_teacher.parameters()
-        sam_optimizer = SAM(paras, optimizer, rho = args.rho / args.sam_steps)
+
+        if args.sam_steps:
+            paras = model_teacher.parameters()
+            sam_optimizer = SAM(paras, optimizer, rho = args.rho / args.sam_steps)
+        
+        if args.tanh_space:
+            inputs.data = img_process.tanh_space(inputs.data)
+            inputs.data = img_process.normalize(inputs.data)
         
         lr_scheduler = lr_cosine_policy(args.lr, 0, iterations_per_layer)  # 0 - do not use warmup
         criterion = nn.CrossEntropyLoss()
@@ -147,11 +159,11 @@ def get_images(args, model_teacher, hook_for_display, ipc_id):
             # learning rate scheduling
             lr_scheduler(optimizer, iteration, iteration)
 
-            aug_function = transforms.Compose([
+            aug_func = transforms.Compose([
                 transforms.RandomResizedCrop(64),
                 transforms.RandomHorizontalFlip(),
             ])
-            inputs_jit = aug_function(inputs)
+            inputs_jit = aug_func(inputs)
 
             # apply random jitter offsets
             off1 = random.randint(0, lim_0)
@@ -175,8 +187,11 @@ def get_images(args, model_teacher, hook_for_display, ipc_id):
 
             # R_feature loss
             rescale = [args.first_bn_multiplier] + [1.]* (len(loss_r_feature_layers) - 1)
-            loss_r_bn_feature = sum([mod.r_feature * rescale[idx] for (idx, mod) in enumerate(loss_r_feature_layers)])
-
+            loss_r_bn_feature = [
+                mod.r_feature.to(loss_ce.device) * rescale[idx] for (idx, mod) in enumerate(loss_r_feature_layers)
+            ]
+            loss_r_bn_feature = torch.stack(loss_r_bn_feature).sum()
+            
             # final loss
             loss_aux = args.r_bn * loss_r_bn_feature
             loss = loss_ce + loss_aux
@@ -209,7 +224,6 @@ def get_images(args, model_teacher, hook_for_display, ipc_id):
             optimizer.step()
 
             # clip color outlayers
-            img_process = ImageProcessor(dataset)
             inputs.data = img_process.clip(inputs.data)
 
         if args.store_last_images:
