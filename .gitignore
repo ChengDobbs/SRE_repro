@@ -1,15 +1,16 @@
-wandb/
+benchmark/
 data/
 save/
 syn_data/
-benchmark/
-TeX/
+utils/
+tex/
 __pycache__/
+wandb/
 .vscode/
 *.pyc
 *.pth
 *.zip
-*.tar.gz
+*.gz
 *.pdf
 *.txt
 

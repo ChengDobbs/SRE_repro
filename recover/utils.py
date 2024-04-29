@@ -19,7 +19,7 @@ class ImageProcessor:
             self.mean = np.array([0.485, 0.456, 0.406])
             self.std = np.array([0.229, 0.224, 0.225])
     
-    def clip(self, image_tensor: torch.Tensor) -> torch.Tensor:
+    def clip(self, x):
         """
         clip the input image
         """
@@ -27,45 +27,45 @@ class ImageProcessor:
         upper_bound = (1 - self.mean) / self.std
         
         for c in range(3):
-            image_tensor[:, c] = torch.clamp(image_tensor[:, c], lower_bound[c], upper_bound[c])
+            x[:, c] = torch.clamp(x[:, c], lower_bound[c], upper_bound[c])
 
-        return image_tensor
+        return x
     
-    def normalize(self, image_tensor):
+    def normalize(self, x):
         """
         normalize the input image
         """
         for c in range(3):
-            image_tensor[:, c] = (image_tensor[:, c] - self.mean[c]) / self.std[c]
+            x[:, c] = (x[:, c] - self.mean[c]) / self.std[c]
 
-        return image_tensor
+        return x
 
-    def denormalize(self, image_tensor):
+    def denormalize(self, x):
         """
-        clamp to original input
+        denormalize back to original input
         """
         for c in range(3):
-            image_tensor[:, c] = torch.clamp(image_tensor[:, c] * self.std[c] + self.mean[c], 0, 1)
+            x[:, c] = torch.clamp(x[:, c] * self.std[c] + self.mean[c], 0, 1)
 
-        return image_tensor
+        return x
 
-    def inverse_tanh_space(self, image_tensor):
+    def inverse_tanh_space(self, x):
         """
         inverse tanh space
         """
-        return (torch.tanh(image_tensor) + 1) / 2
+        return self.atanh(torch.clamp(x * 2 - 1, -1, 1))
     
-    def tanh_space(self, image_tensor):
+    def tanh_space(self, x):
         """
         tanh space
         """
-        return self.atanh(torch.clamp(image_tensor * 2 - 1, -1, 1))
-
-    def atanh(self, image_tensor):
+        return (torch.tanh(x) + 1) / 2
+    
+    def atanh(self, x):
         """
         atanh transform
         """
-        return torch.log((1 + image_tensor) / (1 - image_tensor)) / 2
+        return torch.log((1 + x) / (1 - x)) / 2
 
 
 class BNFeatureHook:

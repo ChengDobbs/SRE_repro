@@ -27,7 +27,7 @@ def parse_args():
         "SRe2L: recover data from pre-trained model")
     
     '''data path flags'''
-    parser.add_argument('--exp-name', type=str, default='in1k_rn18_it2k_4091',
+    parser.add_argument('--exp-name', type=str, default='in1k_rn18_awp_2k_ipc10',
                         help='name of the experiment, subfolder under syn_data_path')
     parser.add_argument('--dataset', type=str, default='imagenet', 
                         help='type of dataset', choices=['cifar100', 'imagenet', 'tinyIN'])
@@ -64,7 +64,7 @@ def parse_args():
     parser.add_argument('--arch-name', type=str, default='resnet18',
                         help='arch name from pretrained torchvision models')
     parser.add_argument('--arch-path', type=str, default='')
-    parser.add_argument('--verifier', action='store_true', default=False,
+    parser.add_argument('--verifier', action='store_true', 
                         help='whether to evaluate synthetic data with another model')
     parser.add_argument('--verifier-arch', type=str, default='mobilenet_v2',
                         help='arch name from torchvision models to act as a verifier')
@@ -72,11 +72,11 @@ def parse_args():
     parser.add_argument('--ipc-end', default=50, type=int)
 
     '''wandb flags'''
-    parser.add_argument('--wandb-project', type=str, default='rn18_in1k_syn', 
+    parser.add_argument('--wandb-project', type=str, default='Ortho_SRe2L', 
                         help='wandb project name')
-    parser.add_argument('--wandb-name', type=str, default='db_name', 
+    parser.add_argument('--wandb-name', type=str, default='in1k', 
                         help='name')
-    parser.add_argument('--wandb-group', type=str, default='syn_it3k', 
+    parser.add_argument('--wandb-group', type=str, default='in1k_awp', 
                         help='group name')
     parser.add_argument('--wandb-job-type', type=str, default='recover', help='job type in certain group',
                         choices=['recover', 'recover_awp', 'relabel', 'val_KD', 'val_FKD'])
@@ -84,7 +84,6 @@ def parse_args():
     args = parser.parse_args()
     args.syn_data_path = os.path.join(args.syn_data_path, args.exp_name)
     args.data_select_path = os.path.join(args.data_select_path + '_' + str(args.select_num))
-    # class-wise alignment
     args.sorted_path = sorted(os.listdir(args.data_select_path))
     return args
 
@@ -137,11 +136,9 @@ def get_images(args, model_teacher, ipc_id):
             inputs.data = img_process.denormalize(inputs.data)
             inputs.data = img_process.inverse_tanh_space(inputs.data)
 
-        inputs = inputs.requires_grad_(True)
-
+        inputs.requires_grad = True
         iterations_per_layer = args.iteration
         lim_0, lim_1 = args.jitter , args.jitter
-
         optimizer = optim.Adam([inputs], lr=args.lr, betas=[0.5, 0.9], eps = 1e-8)
 
         if args.sam_steps:
@@ -164,8 +161,8 @@ def get_images(args, model_teacher, ipc_id):
                 transforms.RandomResizedCrop(224), # Crop Coord
                 transforms.RandomHorizontalFlip(), # Flip Status
             ])
-
             inputs_jit = aug_func(inputs)
+
             # apply random jitter offsets
             off1 = random.randint(0, lim_0)
             off2 = random.randint(0, lim_1)
@@ -187,15 +184,12 @@ def get_images(args, model_teacher, ipc_id):
 
             # R_feature loss
             rescale = [args.first_bn_multiplier] + [1.]* (len(loss_r_feature_layers) - 1)
-
-            # loss_r_bn_feature = sum([mod.r_feature * rescale[idx] for (idx, mod) in enumerate(loss_r_feature_layers)])
             loss_r_bn_feature = [
                 mod.r_feature.to(loss_ce.device) * rescale[idx] for (idx, mod) in enumerate(loss_r_feature_layers)
             ]
             loss_r_bn_feature = torch.stack(loss_r_bn_feature).sum()
 
             # combining losses
-            # tv_l2 = l2_scale = 0, omitted
             loss_aux = args.r_bn * loss_r_bn_feature
             loss = loss_ce + loss_aux
 
@@ -233,7 +227,6 @@ def get_images(args, model_teacher, ipc_id):
             optimizer.step()
 
             # clip color outlayers
-            img_process = ImageProcessor(dataset)
             inputs.data = img_process.clip(inputs.data)
 
             if best_cost > loss.item() or iteration == 1:
