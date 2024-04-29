@@ -381,14 +381,13 @@ def main(args):
             if acc1 > best_acc1:
                 best_acc1 = max(acc1, best_acc1)
                 utils_tiny.save_on_master(checkpoint, os.path.join(args.output_dir, "checkpoint_best.pth"))
-    
+        metrics = {
+            'val/epoch': epoch,
+            'best_acc1': best_acc1,
+        }
+        metrics.update(metrics)
+        wandb.log(metrics)
     print(f"Best Accuracy {best_acc1:.3f}")
-    metrics = {
-        'val/epoch': epoch,
-        'best_acc1': best_acc1,
-    }
-    metrics.update(metrics)
-    wandb.log(metrics)
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f"Training time {total_time_str}")
