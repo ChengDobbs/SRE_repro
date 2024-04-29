@@ -31,7 +31,16 @@ class ImageProcessor:
 
         return image_tensor
     
-    def denormalize(self, image_tensor: torch.Tensor) -> torch.Tensor:
+    def normalize(self, image_tensor):
+            """
+            normalize the input image
+            """
+            for c in range(3):
+                image_tensor[:, c] = (image_tensor[:, c] - self.mean[c]) / self.std[c]
+
+            return image_tensor
+
+    def denormalize(self, image_tensor):
         """
         clamp to original input
         """
@@ -39,6 +48,24 @@ class ImageProcessor:
             image_tensor[:, c] = torch.clamp(image_tensor[:, c] * self.std[c] + self.mean[c], 0, 1)
 
         return image_tensor
+
+    def inverse_tanh_space(self, image_tensor):
+        """
+        inverse tanh space
+        """
+        return (torch.tanh(image_tensor) + 1) / 2
+    
+    def tanh_space(self, image_tensor):
+        """
+        tanh space
+        """
+        return self.atanh(torch.clamp(image_tensor * 2 - 1, -1, 1))
+
+    def atanh(self, image_tensor):
+        """
+        atanh transform
+        """
+        return torch.log((1 + image_tensor) / (1 - image_tensor)) / 2
 
 
 class BNFeatureHook:
