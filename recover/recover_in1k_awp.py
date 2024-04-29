@@ -57,6 +57,8 @@ def parse_args():
                         help='rho parameter for SAM optimizer')
     parser.add_argument('--sam-steps', type=int, default=15,
                         help='number of SAM steps')
+    parser.add_argument('--tanh-space', action='store_true',
+                        help='whether to use tanh space for optimization')
     
     '''model flags'''
     parser.add_argument('--arch-name', type=str, default='resnet18',
@@ -128,7 +130,13 @@ def get_images(args, model_teacher, ipc_id):
             image = load_image(image_path)
             inputs.append(image)
 
+        img_process = ImageProcessor(dataset)
         inputs = torch.stack(inputs).to('cuda')
+
+        if args.tanh_space:
+            inputs.data = img_process.denormalize(inputs.data)
+            inputs.data = img_process.inverse_tanh_space(inputs.data)
+
         inputs = inputs.requires_grad_(True)
 
         iterations_per_layer = args.iteration
@@ -152,6 +160,10 @@ def get_images(args, model_teacher, ipc_id):
                 transforms.RandomResizedCrop(224), # Crop Coord
                 transforms.RandomHorizontalFlip(), # Flip Status
             ])
+
+            if args.tanh_space:
+                inputs.data = img_process.tanh_space(inputs.data)
+                inputs.data = img_process.normalize(inputs.data)
 
             inputs_jit = aug_func(inputs)
             # apply random jitter offsets
