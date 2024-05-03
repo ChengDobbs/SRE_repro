@@ -49,6 +49,8 @@ def parse_args():
                         help='learning rate for optimization')
     parser.add_argument('--jitter', default=32, type=int, 
                         help='random shift on the synthetic data')
+    parser.add_argument('--r-var', type=float, default=1,
+                        help='coefficient for variance regularization')
     parser.add_argument('--r-bn', type=float, default=0.01,
                         help='coefficient for BN feature distribution regularization')
     parser.add_argument('--first-bn-multiplier', type=float, default=10.,
@@ -109,7 +111,7 @@ def get_images(args, model_teacher, ipc_id):
     loss_r_feature_layers = []
     for module in model_teacher.modules():
         if isinstance(module, nn.BatchNorm2d):
-            loss_r_feature_layers.append(BNFeatureHook(module))
+            loss_r_feature_layers.append(BNFeatureHook(module, args))
 
     # setup target labels
     # targets_all = torch.LongTensor(np.random.permutation(1000))
