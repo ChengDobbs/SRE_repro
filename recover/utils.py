@@ -69,14 +69,15 @@ class ImageProcessor:
 
 
 class BNFeatureHook:
-    def __init__(self, module):
+    def __init__(self, module, args):
         self.hook = module.register_forward_hook(self.hook_fn)
+        self.r_var = args.r_var
 
     def hook_fn(self, module, input, output):
         nch = input[0].shape[1]
         mean = input[0].mean([0, 2, 3])
         var = input[0].permute(1, 0, 2, 3).contiguous().reshape([nch, -1]).var(1, unbiased=False)
-        r_feature = torch.norm(module.running_var.data - var, 2) + torch.norm(module.running_mean.data - mean, 2)
+        r_feature = torch.norm(module.running_var.data - var, 2) * self.r_var + torch.norm(module.running_mean.data - mean, 2)
         self.r_feature = r_feature
 
     def close(self):
