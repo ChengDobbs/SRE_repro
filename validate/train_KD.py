@@ -245,13 +245,14 @@ def train(model, args, epoch=None):
             target = target.cpu().numpy()
             # read from soft_labels dict according to target
             soft_label_list = []
-            for i, t in enumerate(target):
-                soft_label = args.soft_labels[t].pop()
+            for t in target:
+                soft_label = args.soft_labels[t][0]
+                args.soft_labels[t] = args.soft_labels[t][1:]
                 soft_label = torch.tensor(soft_label).cuda()
                 soft_label_list.append(soft_label)
-            soft_label = torch.stack(soft_label_list)
-            # __import__('pdb').set_trace()
-            # print(soft_label.size())
+            soft_label = torch.stack(soft_label_list).cuda()
+            print(soft_label.shape)
+            target = torch.tensor(target).cuda()
 
         else:
             soft_label = args.teacher_model(images).detach()
