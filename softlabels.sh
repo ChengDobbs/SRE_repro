@@ -9,5 +9,5 @@ python 'validate/make_softlabels.py' \
     --cos -T 20 -j 4 \
     --ipc ${ipcn} \
     --mix-type cutmix \
-    --save-soft-labels \
-    --output-dir save/val_kd_in1k/in1k_rn18_awp_${iter}_ipc${ipcn}
+    --output-dir save/in1k_rn18_awp_${iter}_ipc${ipcn} \
+    --save-soft-labels

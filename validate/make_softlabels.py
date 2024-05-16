@@ -124,30 +124,29 @@ def train(args):
         num_workers=args.workers, pin_memory=True)
     
     
-    soft_labels = []
-    targets = []
-    for data, target in train_loader:
+    soft_labels = {}
+    for batch_idx, (data, target) in enumerate(train_loader):
         target = target.type(torch.LongTensor)
         data, target = data.cuda(), target.cuda()
         images, _, _, _ = mix_aug(data, args)
 
         soft_label = args.teacher_model(images).detach()
-        soft_label = F.softmax(soft_label/args.temperature, dim=1)
+        soft_label = F.softmax(soft_label/args.temperature, dim=1).cpu().numpy()
         # print(soft_label)
-        soft_labels.append(soft_label)
-        targets.append(target)
-
+        # append corresponding soft label to the list according its target
+        for i, t in enumerate(target):
+            if t.item() not in soft_labels:
+                soft_labels[t.item()] = []
+            soft_labels[t.item()].append(soft_label[i])
+        # print(len(soft_labels[0]))
+        print(f"batch {batch_idx} done")
+        
     if args.save_soft_labels:
         print("=> save soft labels")
-        soft_labels = torch.cat(soft_labels, dim=0)
-        print(soft_labels.size())
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
-        torch.save(soft_labels, f'{args.output_dir}/soft_labels.pth')
-
-        targets = torch.cat(targets, dim=0)
-        print(targets.size())
-        torch.save(targets, f'{args.output_dir}/targets.pth')
+        # save soft labels dict
+        np.save(os.path.join(args.output_dir, 'soft_labels.npy'), soft_labels)
 
 if __name__ == '__main__':
     args = get_args()

@@ -31,9 +31,11 @@ def get_args():
                         help='path to validation dataset')
     parser.add_argument('--output-dir', type=str, default='./save', 
                         help='path to output dir')
+    parser.add_argument('--read-soft-labels', action='store_true',
+                        help='read soft labels from file')
     
     """training flags"""
-    parser.add_argument('--batch-size', type=int, default=1024, 
+    parser.add_argument('--batch-size', type=int, default=128, 
                         help='batch size')
     parser.add_argument('--gradient-accumulation-steps', type=int, default=1, 
                         help='gradient accumulation steps for small gpu memory')
@@ -47,7 +49,7 @@ def get_args():
     """optimization flags"""
     parser.add_argument('-T', '--temperature', type=float, default=3.0, 
                         help='temperature for distillation loss')
-    parser.add_argument('--cos', default=False, action='store_true', 
+    parser.add_argument('--cos', action='store_true', 
                         help='cosine lr scheduler')
     parser.add_argument('--adamw-lr', type=float, default=0.001, 
                         help='adamw learning rate')
@@ -183,12 +185,17 @@ def main():
     args.val_loader = val_loader
 
     max_prob_crop_list = []
+
+
     for epoch in range(args.start_epoch, args.epochs):
         print(f"\nEpoch: {epoch}")
 
         global wandb_metrics
         wandb_metrics = {}
 
+        if args.read_soft_labels:
+            args.soft_labels = np.load(os.path.join(args.output_dir, 'soft_labels.npy'), allow_pickle=True).item()
+            
         max_prob_crop = train(model, args, epoch)
         max_prob_crop_list.append(max_prob_crop)
 
@@ -230,14 +237,28 @@ def train(model, args, epoch=None):
     for batch_idx, (data, target) in enumerate(args.train_loader):
         target = target.type(torch.LongTensor)
         data, target = data.cuda(), target.cuda()
-
         images, _, _, _ = mix_aug(data, args)
-
         output = model(images)
-        soft_label = args.teacher_model(images).detach()
+
+        if args.read_soft_labels:
+            # read soft labels from soft_labels:dict
+            target = target.cpu().numpy()
+            # read from soft_labels dict according to target
+            soft_label_list = []
+            for i, t in enumerate(target):
+                soft_label = args.soft_labels[t].pop()
+                soft_label = torch.tensor(soft_label).cuda()
+                soft_label_list.append(soft_label)
+            soft_label = torch.stack(soft_label_list)
+            # __import__('pdb').set_trace()
+            # print(soft_label.size())
+
+        else:
+            soft_label = args.teacher_model(images).detach()
+            soft_label = F.softmax(soft_label/args.temperature, dim=1)
+            
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
         output = F.log_softmax(output/args.temperature, dim=1)
-        soft_label = F.softmax(soft_label/args.temperature, dim=1)
 
         max_prob, _ = torch.max(soft_label, dim=1)
         max_prob_list.append(max_prob.mean().item())
